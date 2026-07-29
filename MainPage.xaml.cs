@@ -1,10 +1,15 @@
+using SpectraGrab.Services;
+
 namespace SpectraGrab;
 
 public partial class MainPage : ContentPage
 {
-    public MainPage()
+    private readonly IMobileAutomatedDownloadService automation;
+
+    public MainPage(IMobileAutomatedDownloadService automation)
     {
         InitializeComponent();
+        this.automation = automation;
     }
 
     private void OnInspectClicked(object? sender, EventArgs e)
@@ -14,11 +19,34 @@ public partial class MainPage : ContentPage
             : "Enter a valid HTTP or HTTPS URL.";
     }
 
-    private void OnQueueClicked(object? sender, EventArgs e)
+    private async void OnAutomatedDownloadClicked(object? sender, EventArgs e)
     {
-        StatusLabel.Text = TryGetHttpUri(out var uri)
-            ? $"Queued: {uri.AbsoluteUri}"
-            : "Enter a valid HTTP or HTTPS URL before queuing.";
+        if (!TryGetHttpUri(out var uri))
+        {
+            StatusLabel.Text = "Enter a valid HTTP or HTTPS URL before downloading.";
+            return;
+        }
+
+        DownloadButton.IsEnabled = false;
+        DownloadProgress.Progress = 0;
+        StatusLabel.Text = "AI is planning, downloading, and organizing the media...";
+        try
+        {
+            var progress = new Progress<double>(value =>
+                MainThread.BeginInvokeOnMainThread(() => DownloadProgress.Progress = Math.Clamp(value, 0, 100) / 100d));
+            var result = await automation.DownloadAsync(uri.AbsoluteUri, progress, CancellationToken.None);
+            StatusLabel.Text = result.Warnings.Count == 0
+                ? $"Complete: metadata and poster verified. Saved to {result.FilePath}"
+                : $"Complete with warnings: {string.Join("; ", result.Warnings)}";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = ex.Message;
+        }
+        finally
+        {
+            DownloadButton.IsEnabled = true;
+        }
     }
 
     private bool TryGetHttpUri(out Uri uri)
