@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -49,3 +49,19 @@ jobs:
           else
             echo "Unsigned CI validation is green-capable; signed IPA/TestFlight publication remains blocked until Apple credentials are configured."
           fi
+
+
+      - name: Package unsigned iOS simulator build
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p artifacts
+          ditto -c -k --sequesterRsrc --keepParent bin/Release/net8.0-ios/iossimulator-x64 artifacts/SpectraGrab-iOS-Simulator.zip
+          test -s artifacts/SpectraGrab-iOS-Simulator.zip
+
+      - name: Publish GitHub release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="ios-build-${{ github.run_number }}"
+          gh release create "$tag" artifacts/SpectraGrab-iOS-Simulator.zip --target "${{ github.sha }}" --title "SpectraGrab iOS Build ${{ github.run_number }}" --notes "Automated unsigned iOS simulator release with one-link AI download planning, direct/HLS transfer, adult metadata verification, provider posters, and NFO sidecars. Signed IPA/TestFlight publication requires Apple credentials."
