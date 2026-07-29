@@ -9,7 +9,9 @@
       <Label Text="iOS companion • synchronized with Windows and Android" />
       <Entry x:Name="UrlEntry" Placeholder="Paste a media URL" Keyboard="Url" />
       <Button Text="Inspect" Clicked="OnInspectClicked" />
-      <Button Text="Add to Queue" Clicked="OnQueueClicked" />
+      <Button x:Name="DownloadButton" Text="AI Download &amp; Organize" Clicked="OnAutomatedDownloadClicked" />
+      <ProgressBar x:Name="DownloadProgress" Progress="0" />
+      <Label Text="Uses Qwen AI planning with an offline fallback, app-scoped storage, adult metadata providers, verified posters, and NFO sidecars." FontSize="12" />
       <Label x:Name="StatusLabel" Text="Ready." />
     </VerticalStackLayout>
   </ScrollView>
