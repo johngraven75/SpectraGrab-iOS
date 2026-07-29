@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SpectraGrab.MainPage"
+             Title="SpectraGrab">
+  <ScrollView>
+    <VerticalStackLayout Padding="24" Spacing="16">
+      <Label Text="SpectraGrab" FontSize="32" FontAttributes="Bold" />
+      <Label Text="iOS companion • synchronized with Windows and Android" />
+      <Entry x:Name="UrlEntry" Placeholder="Paste a media URL" Keyboard="Url" />
+      <Button Text="Inspect" Clicked="OnInspectClicked" />
+      <Button Text="Add to Queue" Clicked="OnQueueClicked" />
+      <Label x:Name="StatusLabel" Text="Ready." />
+    </VerticalStackLayout>
+  </ScrollView>
+</ContentPage>
