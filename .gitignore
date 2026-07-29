@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+*.ipa
+*.xcarchive
+*.p12
+*.pfx
+*.cer
+*.mobileprovision
+*.provisionprofile
+artifacts/
+TestResults/
