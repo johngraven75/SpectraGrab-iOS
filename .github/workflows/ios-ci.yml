@@ -1,0 +1,51 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install MAUI iOS workload
+        run: dotnet workload install maui-ios
+
+      - name: Restore
+        run: dotnet restore SpectraGrab.iOS.csproj
+
+      - name: Build Release simulator target
+        run: dotnet build SpectraGrab.iOS.csproj -f net8.0-ios -c Release --no-restore -p:RuntimeIdentifier=iossimulator-x64
+
+      - name: Upload iOS validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpectraGrab-iOS-${{ github.sha }}
+          path: bin/Release/net8.0-ios/iossimulator-x64/**
+          if-no-files-found: error
+
+      - name: Signing readiness
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          if [[ -n "$APPLE_CERTIFICATE_P12" && -n "$APPLE_PROVISIONING_PROFILE" && -n "$APP_STORE_CONNECT_API_KEY" ]]; then
+            echo "Apple signing/publishing secrets are configured."
+          else
+            echo "Unsigned CI validation is green-capable; signed IPA/TestFlight publication remains blocked until Apple credentials are configured."
+          fi
