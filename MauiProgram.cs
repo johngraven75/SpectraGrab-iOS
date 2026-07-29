@@ -8,6 +8,8 @@ public static class MauiProgram
     {
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>();
+        builder.Services.AddSingleton<Services.IMobileAutomatedDownloadService, Services.MobileAutomatedDownloadService>();
+        builder.Services.AddSingleton<MainPage>();
 #if DEBUG
         builder.Logging.AddDebug();
 #endif
