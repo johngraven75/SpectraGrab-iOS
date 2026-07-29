@@ -24,7 +24,7 @@ jobs:
           dotnet-version: 10.0.100
 
       - name: Install MAUI iOS workload
-        run: dotnet workload install maui-ios
+        run: dotnet workload install maui-ios --version 10.0.100
 
       - name: Restore
         run: dotnet restore SpectraGrab.iOS.csproj
