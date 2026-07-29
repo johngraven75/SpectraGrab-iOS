@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   build:
@@ -65,3 +66,12 @@ jobs:
         run: |
           tag="ios-build-${{ github.run_number }}"
           gh release create "$tag" artifacts/SpectraGrab-iOS-Simulator.zip --target "${{ github.sha }}" --title "SpectraGrab iOS Build ${{ github.run_number }}" --notes "Automated unsigned iOS simulator release with one-link AI download planning, direct/HLS transfer, adult metadata verification, provider posters, and NFO sidecars. Signed IPA/TestFlight publication requires Apple credentials."
+
+
+      - name: Report build failure
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "⚠️ SpectraGrab iOS build failed — run ${{ github.run_number }}" --body "Current-commit iOS build or publication failed. Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} Commit: ${{ github.sha }}" --label automated
