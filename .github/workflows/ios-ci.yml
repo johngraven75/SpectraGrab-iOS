@@ -18,6 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate persistent provider and add-in configs
+        run: bash scripts/validate-persistent-configs.sh
+
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
@@ -65,7 +68,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="ios-build-${{ github.run_number }}"
-          gh release create "$tag" artifacts/SpectraGrab-iOS-Simulator.zip --target "${{ github.sha }}" --title "SpectraGrab iOS Build ${{ github.run_number }}" --notes "Automated unsigned iOS simulator release with one-link AI download planning, direct/HLS transfer, adult metadata verification, provider posters, and NFO sidecars. Signed IPA/TestFlight publication requires Apple credentials."
+          gh release create "$tag" artifacts/SpectraGrab-iOS-Simulator.zip --target "${{ github.sha }}" --title "SpectraGrab iOS Build ${{ github.run_number }}" --notes "Automated unsigned iOS simulator release with one-link AI download planning, live capture, persistent provider/add-in configs, direct/HLS transfer, adult metadata verification, provider posters, and NFO sidecars. Signed IPA/TestFlight publication requires Apple credentials."
 
 
       - name: Report build failure
