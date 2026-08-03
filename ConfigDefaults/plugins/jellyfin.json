@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "id": "jellyfin",
+  "name": "Jellyfin",
+  "enabled": true,
+  "version": 2,
+  "settings": {
+    "baseUrl": "http://localhost:8096",
+    "credentialSecureStorageKey": "jellyfin_api_key",
+    "syncEnabled": true,
+    "enabledAtStartup": true
+  }
+}

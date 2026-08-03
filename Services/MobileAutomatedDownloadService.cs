@@ -5,6 +5,8 @@ using System.Net.Http.Headers;
 using System.Security;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using SpectraGrab.Models;
 
 namespace SpectraGrab.Services;
 
@@ -29,9 +31,16 @@ public sealed class MobileAutomatedDownloadService : IMobileAutomatedDownloadSer
     public const string Model = "Qwen/Qwen3-4B-Instruct-2507";
     private const long MaxPosterBytes = 25L * 1024L * 1024L;
     private readonly HttpClient client = new() { Timeout = TimeSpan.FromMinutes(20) };
+    private readonly IMobilePersistentConfigService persistentConfigs;
+
+    public MobileAutomatedDownloadService(IMobilePersistentConfigService persistentConfigs)
+    {
+        this.persistentConfigs = persistentConfigs;
+    }
 
     public async Task<MobileDownloadResult> DownloadAsync(string url, IProgress<double>? progress, CancellationToken cancellationToken)
     {
+        await persistentConfigs.EnsureInitializedAsync();
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
@@ -57,19 +66,21 @@ public sealed class MobileAutomatedDownloadService : IMobileAutomatedDownloadSer
         var metadata = new Metadata(safeName, null, null, null, adult ? "Adult" : "Video", null);
         if (adult)
         {
-            var tpdbKey = await SecureStorage.Default.GetAsync("tpdb_api_key");
-            if (!string.IsNullOrWhiteSpace(tpdbKey))
+            var tpdbConfig = persistentConfigs.LoadProviderConfig("theporndb");
+            var tpdbKey = await SecureStorage.Default.GetAsync(Setting(tpdbConfig, "credentialSecureStorageKey", "tpdb_api_key"));
+            if (tpdbConfig.Enabled && !string.IsNullOrWhiteSpace(tpdbKey))
             {
                 providers.Add("ThePornDB");
-                try { metadata = Merge(await FetchTpdbAsync(safeName, tpdbKey, cancellationToken), metadata); }
+                try { metadata = Merge(await FetchTpdbAsync(safeName, tpdbKey, Setting(tpdbConfig, "baseUrl", "https://api.theporndb.net"), cancellationToken), metadata); }
                 catch (Exception ex) { warnings.Add("ThePornDB: " + ex.Message); }
             }
 
-            var stashKey = await SecureStorage.Default.GetAsync("stashdb_api_key");
-            if (!string.IsNullOrWhiteSpace(stashKey))
+            var stashConfig = persistentConfigs.LoadProviderConfig("stashdb");
+            var stashKey = await SecureStorage.Default.GetAsync(Setting(stashConfig, "credentialSecureStorageKey", "stashdb_api_key"));
+            if (stashConfig.Enabled && !string.IsNullOrWhiteSpace(stashKey))
             {
                 providers.Add("StashDB");
-                try { metadata = Merge(await FetchStashAsync(safeName, stashKey, cancellationToken), metadata); }
+                try { metadata = Merge(await FetchStashAsync(safeName, stashKey, Setting(stashConfig, "endpoint", "https://stashdb.org/graphql"), cancellationToken), metadata); }
                 catch (Exception ex) { warnings.Add("StashDB: " + ex.Message); }
             }
         }
@@ -104,19 +115,20 @@ public sealed class MobileAutomatedDownloadService : IMobileAutomatedDownloadSer
             poster = "provider_then_none",
             safety = "no_drm_paywall_access_control_or_captcha_bypass"
         });
-        var hfToken = await SecureStorage.Default.GetAsync("hf_token");
-        if (string.IsNullOrWhiteSpace(hfToken))
+        var hfConfig = persistentConfigs.LoadProviderConfig("huggingface");
+        var hfToken = await SecureStorage.Default.GetAsync(Setting(hfConfig, "credentialSecureStorageKey", "hf_token"));
+        if (!hfConfig.Enabled || string.IsNullOrWhiteSpace(hfToken))
         {
             return fallback;
         }
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://router.huggingface.co/v1/chat/completions");
+            using var request = new HttpRequestMessage(HttpMethod.Post, Setting(hfConfig, "endpoint", "https://router.huggingface.co/v1/chat/completions"));
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", hfToken);
             request.Content = JsonContent.Create(new
             {
-                model = Model,
+                model = Setting(hfConfig, "model", Model),
                 messages = new object[]
                 {
                     new { role = "system", content = "Return compact JSON for lawful media download planning. Never suggest bypassing DRM, paywalls, access controls, credentials, or CAPTCHAs." },
@@ -198,9 +210,10 @@ public sealed class MobileAutomatedDownloadService : IMobileAutomatedDownloadSer
         return destination;
     }
 
-    private async Task<Metadata> FetchTpdbAsync(string title, string key, CancellationToken token)
+    private async Task<Metadata> FetchTpdbAsync(string title, string key, string baseUrl, CancellationToken token)
     {
-        using var searchRequest = new HttpRequestMessage(HttpMethod.Get, $"https://api.theporndb.net/scenes?parse={Uri.EscapeDataString(title)}&hash=&year=");
+        baseUrl = baseUrl.TrimEnd('/');
+        using var searchRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/scenes?parse={Uri.EscapeDataString(title)}&hash=&year=");
         searchRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         using var searchResponse = await client.SendAsync(searchRequest, token);
         searchResponse.EnsureSuccessStatusCode();
@@ -209,7 +222,7 @@ public sealed class MobileAutomatedDownloadService : IMobileAutomatedDownloadSer
         var id = Get(first, "uuid") ?? Get(first, "UUID");
         if (string.IsNullOrWhiteSpace(id)) return Metadata.Empty;
 
-        using var detailRequest = new HttpRequestMessage(HttpMethod.Get, "https://api.theporndb.net/scenes/" + id);
+        using var detailRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/scenes/{id}");
         detailRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         using var detailResponse = await client.SendAsync(detailRequest, token);
         detailResponse.EnsureSuccessStatusCode();
@@ -218,9 +231,9 @@ public sealed class MobileAutomatedDownloadService : IMobileAutomatedDownloadSer
         return new(Get(detail, "title"), Get(detail, "description") ?? Get(detail, "details"), Nested(detail, "posters", "large") ?? Get(detail, "poster"), Year(Get(detail, "date")), Tags(detail), Get(detail, "uuid"));
     }
 
-    private async Task<Metadata> FetchStashAsync(string title, string key, CancellationToken token)
+    private async Task<Metadata> FetchStashAsync(string title, string key, string endpoint, CancellationToken token)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, "https://stashdb.org/graphql");
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
         request.Headers.Add("ApiKey", key);
         request.Content = JsonContent.Create(new
         {
@@ -264,5 +277,9 @@ public sealed class MobileAutomatedDownloadService : IMobileAutomatedDownloadSer
     private static int? Year(string? value) => value is { Length: >= 4 } && int.TryParse(value[..4], out var year) ? year : null;
     private static string? Tags(JsonElement value) => value.TryGetProperty("tags", out var tags) ? string.Join(", ", tags.EnumerateArray().Select(tag => Get(tag, "name")).Where(name => !string.IsNullOrWhiteSpace(name)).Take(8)) : null;
     private static string Escape(string? value) => SecurityElement.Escape(value ?? string.Empty) ?? string.Empty;
+    private static string Setting(IntegrationConfig config, string key, string fallback) =>
+        config.Settings[key] is JsonValue value && value.TryGetValue<string>(out var setting) && !string.IsNullOrWhiteSpace(setting)
+            ? setting
+            : fallback;
     private sealed record Metadata(string? Title, string? Overview, string? PosterUrl, int? Year, string? Genre, string? ProviderId) { public static Metadata Empty { get; } = new(null, null, null, null, null, null); }
 }

@@ -23,6 +23,8 @@ Windows is the feature-definition reference. Android and iOS must implement acce
 - retries and robust process/network error handling
 - format/quality selection
 - persistent settings
+- live-stream capture with progress and safe stop/finalization
+- versioned provider and add-in JSON configs that preserve user settings across upgrades
 - human CAPTCHA/browser handoff
 - authorized-session handling where platform APIs permit
 - release/version metadata
@@ -34,3 +36,5 @@ A coordinated release is green only when Windows, Android, and iOS share the int
 ## Safety boundary
 
 No DRM bypass, paywall/access-control circumvention, credential bypass, or automated CAPTCHA solving/bypass.
+
+Credentials remain in platform-secure storage or environment variables and are never persisted in integration JSON.

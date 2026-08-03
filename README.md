@@ -2,6 +2,8 @@
 
 iOS companion repository for the SpectraGrab product family.
 
+The iOS app includes app-scoped direct/HLS live capture with progress and safe stop/finalization. It also ships verified defaults for five providers and the Emby, Jellyfin, Plex, Local AI, and QuickConnect add-ins. Writable JSON copies live in the app data directory, are upgraded by merging missing fields, and survive app upgrades. Credentials remain in iOS Secure Storage/Keychain and are referenced by key name rather than written into JSON.
+
 ## Product relationship
 
 - Windows reference: `johngraven75/SpectraGrab`
