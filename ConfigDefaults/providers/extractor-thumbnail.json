@@ -1,0 +1,1 @@
+{"schemaVersion":2,"id":"extractor-thumbnail","name":"Extractor thumbnail","enabled":true,"version":2,"settings":{"source":"managed-http","credentialRequired":false,"posterFallback":true}}

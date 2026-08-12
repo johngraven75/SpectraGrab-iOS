@@ -1,4 +1,4 @@
-name: iOS CI
+name: iOS CI and Simulator TEST Release
 
 on:
   push:
@@ -15,67 +15,104 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
+env:
+  DOTNET_VERSION: 8.0.400
+  RELEASE_VERSION: 0.3.0
+  RELEASE_BUILD: 3
+
 jobs:
   build:
     runs-on: macos-14
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v7
+      - name: Validate release, config, and parity contracts
+        run: python3 scripts/validate-ios-release.py
+      - name: Select compatible Xcode
+        run: |
+          set -euo pipefail
+          xcode_path='/Applications/Xcode_15.4.app/Contents/Developer'
+          test -d "$xcode_path"
+          sudo xcode-select -s "$xcode_path"
+          xcodebuild -version
       - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.400
-
+          dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Install MAUI iOS workload
-        run: dotnet workload install maui-ios --version 8.0.400
-
+        run: dotnet workload install maui-ios --version "$DOTNET_VERSION"
       - name: Restore
         run: dotnet restore SpectraGrab.iOS.csproj
-
       - name: Build Release simulator target
         run: dotnet build SpectraGrab.iOS.csproj -f net8.0-ios -c Release --no-restore -p:RuntimeIdentifier=iossimulator-arm64
-
-      - name: Upload iOS validation artifact
-        uses: actions/upload-artifact@v4
+      - name: Verify and package installable Simulator TEST app
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          apps=()
+          while IFS= read -r app_path; do apps+=("$app_path"); done < <(find bin/Release/net8.0-ios/iossimulator-arm64 -type d -name '*.app' -prune)
+          if [[ ${#apps[@]} -ne 1 ]]; then
+            printf 'Expected exactly one iOS Simulator app bundle, found %s\n' "${#apps[@]}" >&2
+            printf '%s\n' "${apps[@]}" >&2
+            exit 1
+          fi
+          app="${apps[0]}"
+          identifier="$(plutil -extract CFBundleIdentifier raw "$app/Info.plist")"
+          version="$(plutil -extract CFBundleShortVersionString raw "$app/Info.plist")"
+          build="$(plutil -extract CFBundleVersion raw "$app/Info.plist")"
+          executable="$(plutil -extract CFBundleExecutable raw "$app/Info.plist")"
+          [[ "$identifier" == 'com.johngraven75.spectragrab' ]]
+          [[ "$version" == "$RELEASE_VERSION" ]]
+          [[ "$build" == "$RELEASE_BUILD" ]]
+          test -x "$app/$executable"
+          mkdir -p artifacts
+          archive="artifacts/SpectraGrab-iOS-v${RELEASE_VERSION}-Simulator-TEST.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$archive"
+          test -s "$archive"
+          shasum -a 256 "$archive" >"$archive.sha256"
+          printf 'Simulator TEST app verified: %s %s (%s)\n' "$identifier" "$version" "$build"
+      - name: Upload iOS Simulator TEST artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v7
         with:
-          name: SpectraGrab-iOS-${{ github.sha }}
-          path: bin/Release/net8.0-ios/iossimulator-arm64/**
+          name: SpectraGrab-iOS-Simulator-TEST-${{ github.sha }}
+          path: artifacts/**
           if-no-files-found: error
-
-      - name: Signing readiness
+          retention-days: 30
+      - name: Record signing readiness
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
         run: |
           if [[ -n "$APPLE_CERTIFICATE_P12" && -n "$APPLE_PROVISIONING_PROFILE" && -n "$APP_STORE_CONNECT_API_KEY" ]]; then
-            echo "Apple signing/publishing secrets are configured."
+            echo 'Apple signing credentials are configured; a separate device IPA/TestFlight gate may be enabled.' >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Unsigned CI validation is green-capable; signed IPA/TestFlight publication remains blocked until Apple credentials are configured."
+            echo 'The installable Simulator TEST build is verified. Device IPA/TestFlight publication remains blocked until Apple signing and App Store Connect credentials are configured.' >> "$GITHUB_STEP_SUMMARY"
           fi
-
-
-      - name: Package unsigned iOS simulator build
-        if: github.event_name != 'pull_request'
-        run: |
-          mkdir -p artifacts
-          ditto -c -k --sequesterRsrc --keepParent bin/Release/net8.0-ios/iossimulator-arm64 artifacts/SpectraGrab-iOS-Simulator.zip
-          test -s artifacts/SpectraGrab-iOS-Simulator.zip
-
-      - name: Publish GitHub release
+      - name: Publish downloadable Simulator TEST release
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="ios-build-${{ github.run_number }}"
-          gh release create "$tag" artifacts/SpectraGrab-iOS-Simulator.zip --target "${{ github.sha }}" --title "SpectraGrab iOS Build ${{ github.run_number }}" --notes "Automated unsigned iOS simulator release with one-link AI download planning, direct/HLS transfer, adult metadata verification, provider posters, and NFO sidecars. Signed IPA/TestFlight publication requires Apple credentials."
-
-
+          set -euo pipefail
+          tag="ios-v${RELEASE_VERSION}-simulator-build-${GITHUB_RUN_NUMBER}"
+          archive="artifacts/SpectraGrab-iOS-v${RELEASE_VERSION}-Simulator-TEST.zip"
+          notes="Installable iOS Simulator TEST build ${RELEASE_VERSION} (${RELEASE_BUILD}) for Apple-silicon simulators. Includes cancellable atomic direct/HLS downloading, Live Capture stop/finalization, and persistent provider/add-in configuration. This is not an iPhone/iPad IPA; device installation and TestFlight require Apple signing credentials."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$archive" "$archive.sha256" --clobber
+            gh release edit "$tag" --target "$GITHUB_SHA" --title "SpectraGrab iOS ${RELEASE_VERSION} Simulator TEST Build ${GITHUB_RUN_NUMBER}" --notes "$notes" --prerelease
+          else
+            gh release create "$tag" "$archive" "$archive.sha256" --target "$GITHUB_SHA" --title "SpectraGrab iOS ${RELEASE_VERSION} Simulator TEST Build ${GITHUB_RUN_NUMBER}" --notes "$notes" --prerelease
+          fi
       - name: Report build failure
         if: failure()
-        shell: bash
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue create --title "⚠️ SpectraGrab iOS build failed — run ${{ github.run_number }}" --body "Current-commit iOS build or publication failed. Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} Commit: ${{ github.sha }}"
+          set -euo pipefail
+          title='SpectraGrab iOS Simulator release failure'
+          body="The current iOS compile, Simulator TEST packaging, verification, or publication gate failed. Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} Commit: ${GITHUB_SHA}"
+          existing="$(gh issue list --state open --search "${title} in:title" --json number,title --jq ".[] | select(.title == \"${title}\") | .number" | head -n1)"
+          if [[ -n "$existing" ]]; then gh issue comment "$existing" --body "$body"; else gh issue create --title "$title" --body "$body"; fi

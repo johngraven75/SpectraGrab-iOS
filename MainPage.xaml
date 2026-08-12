@@ -9,10 +9,25 @@
       <Label Text="iOS companion • synchronized with Windows and Android" />
       <Entry x:Name="UrlEntry" Placeholder="Paste a media URL" Keyboard="Url" />
       <Button Text="Inspect" Clicked="OnInspectClicked" />
-      <Button x:Name="DownloadButton" Text="AI Download &amp; Organize" Clicked="OnAutomatedDownloadClicked" />
+      <HorizontalStackLayout Spacing="12">
+        <Button x:Name="DownloadButton" Text="AI Download &amp; Organize" Clicked="OnAutomatedDownloadClicked" />
+        <Button x:Name="StopDownloadButton" Text="Stop Download" Clicked="OnStopDownloadClicked" IsEnabled="False" />
+      </HorizontalStackLayout>
       <ProgressBar x:Name="DownloadProgress" Progress="0" />
-      <Label Text="Uses Qwen AI planning with an offline fallback, app-scoped storage, adult metadata providers, verified posters, and NFO sidecars." FontSize="12" />
+      <Label Text="Uses Qwen AI planning with an offline fallback, atomic app-scoped storage, adult metadata providers, verified posters, and NFO sidecars." FontSize="12" />
       <Label x:Name="StatusLabel" Text="Ready." />
+      <BoxView HeightRequest="1" Color="#4A5568" Margin="0,8" />
+      <Label Text="Live Capture" FontSize="24" FontAttributes="Bold" />
+      <Label Text="Capture public HLS or direct streams you are authorized to record. Protected streams are rejected." FontSize="12" />
+      <Entry x:Name="CaptureUrlEntry" Placeholder="Paste a live-stream URL" Keyboard="Url" />
+      <HorizontalStackLayout Spacing="12">
+        <Button x:Name="CaptureButton" Text="Start Capture" Clicked="OnCaptureClicked" />
+        <Button x:Name="StopCaptureButton" Text="Stop &amp; Finalize" Clicked="OnStopCaptureClicked" IsEnabled="False" />
+      </HorizontalStackLayout>
+      <Label x:Name="CaptureStatusLabel" Text="No active capture." />
+      <BoxView HeightRequest="1" Color="#4A5568" Margin="0,8" />
+      <Label Text="Persistent provider and add-in configuration" FontAttributes="Bold" />
+      <Label x:Name="ConfigStatusLabel" Text="Configuration verification pending." FontSize="12" />
     </VerticalStackLayout>
   </ScrollView>
 </ContentPage>

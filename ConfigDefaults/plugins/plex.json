@@ -1,0 +1,1 @@
+{"schemaVersion":2,"id":"plex","name":"Plex","enabled":true,"version":2,"settings":{"baseUrl":"http://localhost:32400","credentialSecureStorageKey":"plex_token","syncEnabled":true,"enabledAtStartup":true}}

@@ -9,13 +9,17 @@
     <Nullable>enable</Nullable>
     <ApplicationTitle>SpectraGrab</ApplicationTitle>
     <ApplicationId>com.johngraven75.spectragrab</ApplicationId>
-    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>0.3.0</ApplicationDisplayVersion>
+    <ApplicationVersion>3</ApplicationVersion>
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MauiAsset Include="ConfigDefaults\**\*.json" LogicalName="ConfigDefaults/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

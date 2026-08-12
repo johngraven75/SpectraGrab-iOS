@@ -1,0 +1,1 @@
+{"schemaVersion":2,"id":"theporndb","name":"ThePornDB","enabled":true,"version":2,"settings":{"baseUrl":"https://api.theporndb.net","credentialSecureStorageKey":"tpdb_api_key","credentialRequired":true,"posterDownload":true}}

@@ -1,0 +1,1 @@
+{"schemaVersion":2,"id":"stashdb","name":"StashDB","enabled":true,"version":2,"settings":{"endpoint":"https://stashdb.org/graphql","credentialSecureStorageKey":"stashdb_api_key","credentialRequired":true,"posterDownload":true}}

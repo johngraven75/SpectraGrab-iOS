@@ -23,6 +23,8 @@ Windows is the feature-definition reference. Android and iOS must implement acce
 - retries and robust process/network error handling
 - format/quality selection
 - persistent settings
+- live-stream capture with progress and safe stop/finalization
+- versioned provider and add-in JSON configs that preserve user settings across upgrades
 - human CAPTCHA/browser handoff
 - authorized-session handling where platform APIs permit
 - release/version metadata
