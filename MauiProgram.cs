@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace SpectraGrab;
 
 public static class MauiProgram
@@ -12,9 +10,6 @@ public static class MauiProgram
         builder.Services.AddSingleton<Services.IMobileLiveCaptureService, Services.MobileLiveCaptureService>();
         builder.Services.AddSingleton<Services.IMobileAutomatedDownloadService, Services.MobileAutomatedDownloadService>();
         builder.Services.AddSingleton<MainPage>();
-#if DEBUG
-        builder.Logging.AddDebug();
-#endif
         return builder.Build();
     }
 }
