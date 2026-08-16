@@ -25,9 +25,14 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install hardened release-validator dependencies
+        run: |
+          set -euo pipefail
+          python3 -m venv .release-validator-venv
+          .release-validator-venv/bin/python -m pip install --disable-pip-version-check --requirement scripts/requirements-release-validator.txt
       - name: Validate release, config, and parity contracts
-        run: python3 scripts/validate-ios-release.py
+        run: .release-validator-venv/bin/python scripts/validate-ios-release.py
       - name: Select compatible Xcode
         run: |
           set -euo pipefail
@@ -36,7 +41,7 @@ jobs:
           sudo xcode-select -s "$xcode_path"
           xcodebuild -version
       - name: Setup .NET 8
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Install MAUI iOS workload
@@ -73,7 +78,7 @@ jobs:
           printf 'Simulator TEST app verified: %s %s (%s)\n' "$identifier" "$version" "$build"
       - name: Upload iOS Simulator TEST artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: SpectraGrab-iOS-Simulator-TEST-${{ github.sha }}
           path: artifacts/**
