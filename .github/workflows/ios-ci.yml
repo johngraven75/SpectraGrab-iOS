@@ -27,9 +27,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install hardened release-validator dependencies
-        run: python3 -m pip install --disable-pip-version-check --requirement scripts/requirements-release-validator.txt
+        run: |
+          set -euo pipefail
+          python3 -m venv .release-validator-venv
+          .release-validator-venv/bin/python -m pip install --disable-pip-version-check --requirement scripts/requirements-release-validator.txt
       - name: Validate release, config, and parity contracts
-        run: python3 scripts/validate-ios-release.py
+        run: .release-validator-venv/bin/python scripts/validate-ios-release.py
       - name: Select compatible Xcode
         run: |
           set -euo pipefail
