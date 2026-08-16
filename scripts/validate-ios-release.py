@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import pathlib
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 
 root = pathlib.Path(__file__).resolve().parent.parent
 project = ET.parse(root / "SpectraGrab.iOS.csproj").getroot()
@@ -35,9 +35,9 @@ for kind, expected_ids in expected.items():
 
 workflow = (root / ".github/workflows/ios-ci.yml").read_text(encoding="utf-8")
 for required in (
-    "actions/checkout@v7",
-    "actions/setup-dotnet@v6",
-    "actions/upload-artifact@v7",
+    "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7",
+    "actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6",
+    "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7",
     "SpectraGrab-iOS-v${RELEASE_VERSION}-Simulator-TEST.zip",
     "iossimulator-arm64",
     "Xcode_15.4.app",
