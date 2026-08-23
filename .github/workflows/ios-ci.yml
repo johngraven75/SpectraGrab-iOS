@@ -44,10 +44,19 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: .NET and workload diagnostics (pre-restore)
+        run: |
+          dotnet --info
+          dotnet --list-sdks
+          dotnet workload list
       - name: Install MAUI iOS workload
-        run: dotnet workload install maui-ios --version "$DOTNET_VERSION"
+        run: dotnet workload install maui-ios
       - name: Restore
         run: dotnet restore SpectraGrab.iOS.csproj
+      - name: Restore MAUI workloads from project
+        run: dotnet workload restore SpectraGrab.iOS.csproj
+      - name: .NET and workload diagnostics (post-restore)
+        run: dotnet workload list
       - name: Build Release simulator target
         run: dotnet build SpectraGrab.iOS.csproj -f net8.0-ios -c Release --no-restore -p:RuntimeIdentifier=iossimulator-arm64
       - name: Verify and package installable Simulator TEST app
